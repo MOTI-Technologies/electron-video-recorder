@@ -10,7 +10,7 @@
   },
   "build": {
     "appId": "com.idiaz.videorecorder"
-  },  
+  },
   "main": "packages/main/dist/index.cjs",
   "scripts": {
     "build": "npm run build:main && npm run build:preload && npm run build:renderer",
@@ -67,6 +67,7 @@
   },
   "dependencies": {
     "@types/fluent-ffmpeg": "^2.1.21",
+    "@types/webaudioapi": "^0.0.27",
     "agora-access-token": "^2.0.4",
     "agora-electron-sdk": "^4.2.1",
     "electron-rebuild": "^3.2.9",
