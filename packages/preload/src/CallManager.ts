@@ -13,7 +13,7 @@ import {
   IRtcEngineEx,
   IRtcEngineEventHandler,
 } from 'agora-electron-sdk';
-import {ipcRenderer} from 'electron';
+import { ipcRenderer } from 'electron';
 
 export class CallManager {
   private agoraEngine?: IRtcEngineEx;
@@ -77,23 +77,24 @@ export class CallManager {
   };
 
   createEngine() {
-    let appID = import.meta.env.VITE_AGORA_APP_ID;
-    let agoraEngine = createAgoraRtcEngine();
-    agoraEngine.initialize({appId: appID});
+    const appID = import.meta.env.VITE_AGORA_APP_ID;
+    const agoraEngine = createAgoraRtcEngine();
+    agoraEngine.initialize({ appId: appID });
     agoraEngine.registerEventHandler(this.eventHandler);
     return agoraEngine;
   }
 
   joinChannel(channel: string, token: string) {
+    console.log('joinChannel: ', channel, token)
     if (!this.agoraEngine) {
       this.agoraEngine = this.createEngine();
     }
 
-    let localVideoContainer = document.getElementById('myVideo');
+    const localVideoContainer = document.getElementById('myVideo');
 
     this.agoraEngine?.getMediaEngine().registerVideoFrameObserver(this.videoObserver);
     this.agoraEngine?.getMediaEngine().registerAudioFrameObserver(this.audioObserver);
-    var SAMPLE_RATE = 16000,
+    const SAMPLE_RATE = 16000,
       SAMPLE_NUM_OF_CHANNEL = 1,
       SAMPLES_PER_CALL = 1024;
     this.agoraEngine?.setMixedAudioFrameParameters(SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, SAMPLES_PER_CALL);
@@ -109,7 +110,7 @@ export class CallManager {
     }
     // By default, video is disabled. You need to call enableVideo to start a video stream.
     this.agoraEngine?.enableVideo();
-	// this.agoraEngine?.disableAudio();
+    // this.agoraEngine?.disableAudio();
     this.agoraEngine.startPreview();
     this.agoraEngine.joinChannel(token, channel, 0, new ChannelMediaOptions());
   }

@@ -1,11 +1,10 @@
-import {app, BrowserWindow, IpcMain, ipcMain, IpcMainEvent} from 'electron';
-import {join} from 'node:path';
-import {URL} from 'node:url';
-import { RawAudioFrameOpModeType, createAgoraRtcEngine, VideoSourceType, RenderModeType, ChannelProfileType, ClientRoleType, ChannelMediaOptions, AudioFrame, VideoFrame, IVideoFrameObserver, IAudioFrameObserver, IRtcEngineEx } from "agora-electron-sdk";
+import { app, BrowserWindow, ipcMain, IpcMainEvent } from 'electron';
+import { join, resolve } from 'node:path';
+import { URL } from 'node:url';
+import type { AudioFrame, VideoFrame } from "agora-electron-sdk";
 import * as fs from 'fs';
-import * as path from'path';
+import * as path from 'path';
 import * as os from 'os';
-import { write } from 'node:fs';
 import ffmpeg from 'fluent-ffmpeg';
 import * as ffmpegstatic from 'ffmpeg-static-electron';
 
@@ -14,10 +13,8 @@ ffmpeg.setFfmpegPath(ffmpegstatic.path);
 let compositorWindow: BrowserWindow;
 let storageStream: fs.WriteStream;
 let videoPath: fs.PathLike;
-const pageUrl =
-import.meta.env.DEV && import.meta.env.VITE_DEV_SERVER_URL !== undefined
-  ? import.meta.env.VITE_DEV_SERVER_URL
-  : new URL('../renderer/dist/index.html', 'file://' + __dirname).toString();
+const isDev = import.meta.env.DEV && import.meta.env.VITE_DEV_SERVER_URL !== undefined;
+const pageUrl = import.meta.env.VITE_DEV_SERVER_URL;
 
 async function createWindow() {
   const appIcon = join(app.getAppPath(), 'static/images/moti-webapp-icon.png');
@@ -52,7 +49,7 @@ async function createWindow() {
     browserWindow?.show();
 
     if (import.meta.env.DEV) {
-      browserWindow?.webContents.openDevTools({mode: 'detach'});
+      browserWindow?.webContents.openDevTools({ mode: 'detach' });
     }
   });
 
@@ -68,12 +65,18 @@ async function createWindow() {
    */
 
 
-  await browserWindow.loadURL(pageUrl);
+
+  if (isDev) {
+    await browserWindow.loadURL(pageUrl!);
+  } else {
+    const file = join(app.getAppPath(), 'packages/renderer/dist/index.html')
+    await browserWindow.loadFile(file);
+  }
 
   return browserWindow;
 }
 
-function initCompositorWindow() {
+async function initCompositorWindow() {
   const width = 1280; // Frame width
   const height = 720; // Frame height
 
@@ -92,10 +95,15 @@ function initCompositorWindow() {
     },
   });
 
-  compositorWindow.loadURL(pageUrl + 'offscreen');
-  
+  if (isDev) {
+    console.log('compositor window: ', pageUrl! + 'offscreen');
+    await compositorWindow.loadURL(pageUrl! + 'offscreen');
+  } else {
+    await compositorWindow.loadFile(resolve(__dirname, '../../renderer/dist/offscreen.html'));
+  }
+
   compositorWindow.once('ready-to-show', () => {
-    compositorWindow.webContents.openDevTools({mode: 'detach'});
+    compositorWindow.webContents.openDevTools({ mode: 'detach' });
     console.log('ready to show compositor window')
   });
 
@@ -108,17 +116,17 @@ function initCompositorWindow() {
   ipcMain.on('leave', (event: IpcMainEvent) => {
     convertToMP4(videoPath.toString(), app.getPath('temp') + 'video.mp4');
   })
-//   mp4Container.on('data', (segment: any) => {
-// console.log('on data');
-//     let data = new Uint8Array(segment.initSegment.byteLength + segment.data.byteLength);
-//     data.set(segment.initSegment, 0);
-//     data.set(segment.data, segment.initSegment.byteLength);
-//     console.log(mp4Container.mp4.tools.inspect(data));
-//     storageStream.write(data);
-    // mp4Container.off('data');
-    // mp4Container.on('data', (segment:any) =>{
-    //   storageStream.write(new Uint8Array(segment.data));
-    // })
+  //   mp4Container.on('data', (segment: any) => {
+  // console.log('on data');
+  //     let data = new Uint8Array(segment.initSegment.byteLength + segment.data.byteLength);
+  //     data.set(segment.initSegment, 0);
+  //     data.set(segment.data, segment.initSegment.byteLength);
+  //     console.log(mp4Container.mp4.tools.inspect(data));
+  //     storageStream.write(data);
+  // mp4Container.off('data');
+  // mp4Container.on('data', (segment:any) =>{
+  //   storageStream.write(new Uint8Array(segment.data));
+  // })
   // })
 }
 
@@ -143,10 +151,10 @@ function convertToMP4(inputFile, outputFile) {
 function onMixedAudioFrame(event: IpcMainEvent, frame: AudioFrame) {
   compositorWindow?.webContents.send('on-mixed-audio-frame', frame);
 }
-function writeBuffer(event: IpcMainEvent, buffer:ArrayBuffer) {
+function writeBuffer(event: IpcMainEvent, buffer: ArrayBuffer) {
   // mp4Container.push(new Uint8Array(buffer));
   // mp4Container.flush();
-    storageStream.write(Buffer.from(buffer));
+  storageStream.write(Buffer.from(buffer));
   // Get the converted MP4 Blob
 
 }
@@ -162,7 +170,7 @@ export async function restoreOrCreateWindow() {
 
   if (window === undefined) {
     window = await createWindow();
-    initCompositorWindow();
+    //await initCompositorWindow();
   }
 
   if (window.isMinimized()) {

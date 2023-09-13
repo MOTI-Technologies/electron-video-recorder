@@ -2,10 +2,10 @@
  * @module preload
  */
 
-import {BrowserWindow, IpcRendererEvent, contextBridge, ipcMain, ipcRenderer} from 'electron';
+import { type IpcRendererEvent, contextBridge, ipcRenderer } from 'electron';
 
-import {CallManager} from './CallManager';
-import {AudioFrame, VideoFrame} from 'agora-electron-sdk';
+import { CallManager } from './CallManager';
+import type { AudioFrame, VideoFrame } from 'agora-electron-sdk';
 
 const callManager = new CallManager();
 

@@ -22,6 +22,7 @@ module.exports = async function () {
       'node_modules/ffmpeg-static-electron/index.js',
       'node_modules/ffmpeg-static-electron/package.json',
     ],
+    npmRebuild: true,
     extraMetadata: {
       version: getVersion(),
     },
