@@ -6,12 +6,12 @@ import {
   ChannelProfileType,
   ClientRoleType,
   ChannelMediaOptions,
-  AudioFrame,
-  VideoFrame,
-  IVideoFrameObserver,
-  IAudioFrameObserver,
-  IRtcEngineEx,
-  IRtcEngineEventHandler,
+  type AudioFrame,
+  type VideoFrame,
+  type IVideoFrameObserver,
+  type IAudioFrameObserver,
+  type IRtcEngineEx,
+  type IRtcEngineEventHandler,
 } from 'agora-electron-sdk';
 import { ipcRenderer } from 'electron';
 

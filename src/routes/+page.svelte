@@ -1,12 +1,15 @@
 <script lang="ts">
   import {onMount} from 'svelte';
   import Video from '$lib/components/Video.svelte';
-  import type { AgoraTokenResult } from '../lib/types';
+  import type {AgoraTokenResult} from '../lib/types';
+  import {CallManager} from '$lib/CallManager';
 
   const uid = '111';
 
+  const callManager = new CallManager();
+
   let data: AgoraTokenResult;
-  let fetchError = ''
+  let fetchError = '';
   let joined = false;
   let recording = false;
   $: btnTitle = (joined ? 'Leave' : 'Join') + ' Channel';
@@ -60,32 +63,33 @@
     <p>channel: {channel}</p>
     <p>token: {token}</p>
     <button
-      on:click={(e) => {
-    if (!joined) {
-      console.log('joining');
-      window.agoraAPI.joinChannel(channel, token);
-      joined = true;
-    } else {
-      console.log('leaving');
-      window.agoraAPI.leaveChannel();
-      joined = false;
-    }
-    
-  }}
+      on:click={e => {
+        if (!joined) {
+          console.log('joining');
+          callManager.joinChannel(channel, token);
+          joined = true;
+        } else {
+          console.log('leaving');
+          callManager.leaveChannel();
+          joined = false;
+        }
+      }}
       class:joined
     >
       {btnTitle}
     </button>
     <button
       on:click={e => {
-	if (!recording) {
-	  window.agoraAPI.startRecording();
-	  recording = true;
-	} else {
-	  window.agoraAPI.stopRecording();
-	  recording = false;
-	}
-  }}
+        if (!recording) {
+          window.agoraAPI.startRecording();
+          callManager.isRecording = true;
+          recording = true;
+        } else {
+          window.agoraAPI.stopRecording();
+          callManager.isRecording = false;
+          recording = false;
+        }
+      }}
     >
       {recordTitle}
     </button>
@@ -153,10 +157,9 @@
     cursor: pointer;
     font-size: 1rem;
     font-weight: 600;
-    padding: 0.75em 1em;    
+    padding: 0.75em 1em;
     align-items: center;
     justify-content: center;
     display: flex;
   }
-
 </style>

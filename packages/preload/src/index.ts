@@ -4,23 +4,20 @@
 
 import { type IpcRendererEvent, contextBridge, ipcRenderer } from 'electron';
 
-import { CallManager } from './CallManager';
 import type { AudioFrame, VideoFrame } from 'agora-electron-sdk';
 
-const callManager = new CallManager();
-
 contextBridge.exposeInMainWorld('agoraAPI', {
-  joinChannel: (channel: string, token: string) => callManager.joinChannel(channel, token),
+  joinChannel: (channel: string, token: string) => {
+    console.log('join channel');
+  },
   leaveChannel: () => {
+    console.log('leave channel');
     ipcRenderer.send('leave');
-    callManager.leaveChannel();
   },
   startRecording: () => {
-    callManager.isRecording = true;
     ipcRenderer.send('start-recording');
   },
   stopRecording: () => {
-    callManager.isRecording = false;
     ipcRenderer.send('stop-recording');
   },
 });
