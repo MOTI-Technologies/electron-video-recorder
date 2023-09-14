@@ -1,16 +1,16 @@
 <script lang="ts">
   import {onMount} from 'svelte';
   import Video from '$lib/components/Video.svelte';
-  import type {AgoraTokenResult} from '$lib/types';
-  import {PUBLIC_MOTI_DEV_API_KEY} from '$env/static/public';
+  import type { AgoraTokenResult } from '../lib/types';
 
-  const uid = '111'; // any random string will do
+  const uid = '111';
 
+  let data: AgoraTokenResult;
+  let fetchError = ''
   let joined = false;
-  $: btnTitle = joined ? 'Leave' : 'Join';
-
-  let data: AgoraTokenResult | null = null;
-  let fetchError = '';
+  let recording = false;
+  $: btnTitle = (joined ? 'Leave' : 'Join') + ' Channel';
+  $: recordTitle = (recording ? 'Stop' : 'Start') + ' Recording';
 
   onMount(() => {
     getToken();
@@ -23,7 +23,7 @@
   async function getToken() {
     const res = await fetch(`https://stage.api.app.motiapp.com/agora/get-token?uid=${uid}`, {
       headers: {
-        'x-moti-dev-api-key': PUBLIC_MOTI_DEV_API_KEY,
+        'x-moti-dev-api-key': import.meta.env.VITE_MOTI_DEV_API_KEY,
       },
     });
     const json = await res.json();
@@ -60,20 +60,34 @@
     <p>channel: {channel}</p>
     <p>token: {token}</p>
     <button
-      on:click={e => {
-        if (!joined) {
-          console.log('joining');
-          window.agoraAPI.joinChannel(channel, token);
-          joined = true;
-        } else {
-          console.log('leaving');
-          window.agoraAPI.leaveChannel();
-          joined = false;
-        }
-      }}
+      on:click={(e) => {
+    if (!joined) {
+      console.log('joining');
+      window.agoraAPI.joinChannel(channel, token);
+      joined = true;
+    } else {
+      console.log('leaving');
+      window.agoraAPI.leaveChannel();
+      joined = false;
+    }
+    
+  }}
       class:joined
     >
       {btnTitle}
+    </button>
+    <button
+      on:click={e => {
+	if (!recording) {
+	  window.agoraAPI.startRecording();
+	  recording = true;
+	} else {
+	  window.agoraAPI.stopRecording();
+	  recording = false;
+	}
+  }}
+    >
+      {recordTitle}
     </button>
   </div>
 {:else if fetchError}
@@ -121,6 +135,16 @@
   .user {
     margin: 2em 1em;
   }
+
+  .wrap :global(#myVideo) {
+    border-color: red;
+  }
+  .wrap :global(#theirVideo) {
+    border-color: blue;
+  }
+  .user {
+    margin: 2em 1em;
+  }
   button {
     background: black;
     color: white;
@@ -129,9 +153,10 @@
     cursor: pointer;
     font-size: 1rem;
     font-weight: 600;
-    padding: 0.75em 1em;
+    padding: 0.75em 1em;    
     align-items: center;
     justify-content: center;
     display: flex;
   }
+
 </style>

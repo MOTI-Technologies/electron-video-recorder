@@ -17,6 +17,7 @@ import { ipcRenderer } from 'electron';
 
 export class CallManager {
   private agoraEngine?: IRtcEngineEx;
+  public isRecording = false;
 
   eventHandler: IRtcEngineEventHandler = {
     onJoinChannelSuccess: (connection: any, elapsed: number) => {
@@ -45,24 +46,20 @@ export class CallManager {
 
   audioObserver: IAudioFrameObserver = {
     onMixedAudioFrame: (channelId: string, audioFrame: AudioFrame) => {
-      // console.log(audioFrame);
-      ipcRenderer.send('on-mixed-audio-frame', audioFrame);
+      if (this.isRecording) ipcRenderer.send('on-mixed-audio-frame', audioFrame);
       return false;
     },
     onPlaybackAudioFrame: (channelId: string, audioFrame: AudioFrame) => {
-      // console.log(audioFrame);
       return false;
     },
     onRecordAudioFrame: (channelId: string, audioFrame: AudioFrame) => {
-      // console.log(audioFrame);
       return false;
     },
   };
 
   videoObserver: IVideoFrameObserver = {
     onCaptureVideoFrame: (sourceType: VideoSourceType, videoFrame: VideoFrame) => {
-      ipcRenderer.send('composite-local-frame', videoFrame);
-      // console.log(videoFrame);
+      if (this.isRecording) ipcRenderer.send('on-local-video-frame', videoFrame);
       return true;
     },
     onPreEncodeVideoFrame: (sourceType: VideoSourceType, videoFrame: VideoFrame) => {
@@ -96,7 +93,7 @@ export class CallManager {
     this.agoraEngine?.getMediaEngine().registerAudioFrameObserver(this.audioObserver);
     const SAMPLE_RATE = 16000,
       SAMPLE_NUM_OF_CHANNEL = 1,
-      SAMPLES_PER_CALL = 1024;
+      SAMPLES_PER_CALL = 512;
     this.agoraEngine?.setMixedAudioFrameParameters(SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, SAMPLES_PER_CALL);
     this.agoraEngine?.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
     this.agoraEngine?.setClientRole(ClientRoleType.ClientRoleBroadcaster);
@@ -108,9 +105,8 @@ export class CallManager {
         view: localVideoContainer,
       });
     }
-    // By default, video is disabled. You need to call enableVideo to start a video stream.
+
     this.agoraEngine?.enableVideo();
-    // this.agoraEngine?.disableAudio();
     this.agoraEngine.startPreview();
     this.agoraEngine.joinChannel(token, channel, 0, new ChannelMediaOptions());
   }

@@ -1,20 +1,20 @@
-import { app, BrowserWindow, ipcMain, IpcMainEvent } from 'electron';
+import { app, BrowserWindow, IpcMain, ipcMain, IpcMainEvent } from 'electron';
 import { join, resolve } from 'node:path';
-import { URL } from 'node:url';
-import type { AudioFrame, VideoFrame } from "agora-electron-sdk";
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+import type { AudioFrame, VideoFrame } from 'agora-electron-sdk';
+import { createWriteStream } from 'node:fs';
 import ffmpeg from 'fluent-ffmpeg';
 import * as ffmpegstatic from 'ffmpeg-static-electron';
+import { tmpdir } from 'node:os';
+import type { PathLike, WriteStream } from 'node:fs';
 
 ffmpeg.setFfmpegPath(ffmpegstatic.path);
 
-let compositorWindow: BrowserWindow;
-let storageStream: fs.WriteStream;
-let videoPath: fs.PathLike;
-const isDev = import.meta.env.DEV && import.meta.env.VITE_DEV_SERVER_URL !== undefined;
+let recorderWindow: BrowserWindow;
+let storageStream: WriteStream;
+let tempVideoPath: PathLike;
 const pageUrl = import.meta.env.VITE_DEV_SERVER_URL;
+const isDev = import.meta.env.DEV && pageUrl !== undefined;
+console.log({ env: process.env })
 
 async function createWindow() {
   const appIcon = join(app.getAppPath(), 'static/images/moti-webapp-icon.png');
@@ -48,15 +48,10 @@ async function createWindow() {
   browserWindow.on('ready-to-show', () => {
     browserWindow?.show();
 
-    if (import.meta.env.DEV) {
+    if (isDev) {
       browserWindow?.webContents.openDevTools({ mode: 'detach' });
     }
   });
-
-  // ipcMain.on('joinChannel', (event, channel, token) => {
-  //   console.log('received test event', token);
-  //   joinChannel(channel, token);
-  // });
 
   /**
    * URL for main window.
@@ -66,8 +61,8 @@ async function createWindow() {
 
 
 
-  if (isDev) {
-    await browserWindow.loadURL(pageUrl!);
+  if (isDev && pageUrl) {
+    await browserWindow.loadURL(pageUrl);
   } else {
     const file = join(app.getAppPath(), 'packages/renderer/dist/index.html')
     await browserWindow.loadFile(file);
@@ -76,12 +71,12 @@ async function createWindow() {
   return browserWindow;
 }
 
-async function initCompositorWindow() {
+async function initRecorderWindow() {
   const width = 1280; // Frame width
   const height = 720; // Frame height
 
-  compositorWindow = new BrowserWindow({
-    show: true, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
+  recorderWindow = new BrowserWindow({
+    show: true,
     backgroundColor: '#181A22',
     height,
     width,
@@ -89,48 +84,63 @@ async function initCompositorWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false, // Sandbox disabled because the demo of preload script depend on the Node.js api
-      webviewTag: false, // The webview tag is not recommended. Consider alternatives like an iframe or Electron's BrowserView. @see https://www.electronjs.org/docs/latest/api/webview-tag#warning
+      sandbox: false,
+      webviewTag: false,
       preload: join(app.getAppPath(), 'packages/preload/dist/index.cjs'),
     },
   });
 
-  if (isDev) {
-    console.log('compositor window: ', pageUrl! + 'offscreen');
-    await compositorWindow.loadURL(pageUrl! + 'offscreen');
+  if (isDev && pageUrl) {
+    console.log('compositor window: ', pageUrl + 'offscreen');
+    await recorderWindow.loadURL(pageUrl + 'offscreen');
   } else {
-    await compositorWindow.loadFile(resolve(__dirname, '../../renderer/dist/offscreen.html'));
+    await recorderWindow.loadFile(resolve(__dirname, '../../renderer/dist/offscreen.html'));
   }
 
-  compositorWindow.once('ready-to-show', () => {
-    compositorWindow.webContents.openDevTools({ mode: 'detach' });
+  recorderWindow.once('ready-to-show', () => {
+    recorderWindow.webContents.openDevTools({ mode: 'detach' });
     console.log('ready to show compositor window')
   });
 
-  ipcMain.on('composite-local-frame', compositeLocalFrame);
-  videoPath = path.join(os.homedir(), 'Desktop/test' + new Date().toTimeString() + '.ts')
-  console.log('video path:', videoPath);
-  storageStream = fs.createWriteStream(videoPath);
-  ipcMain.on('write-buffer', writeBuffer)
+  ipcMain.on('on-local-video-frame', onLocalVideoFrame);
   ipcMain.on('on-mixed-audio-frame', onMixedAudioFrame);
-  ipcMain.on('leave', (event: IpcMainEvent) => {
-    convertToMP4(videoPath.toString(), app.getPath('temp') + 'video.mp4');
-  })
-  //   mp4Container.on('data', (segment: any) => {
-  // console.log('on data');
-  //     let data = new Uint8Array(segment.initSegment.byteLength + segment.data.byteLength);
-  //     data.set(segment.initSegment, 0);
-  //     data.set(segment.data, segment.initSegment.byteLength);
-  //     console.log(mp4Container.mp4.tools.inspect(data));
-  //     storageStream.write(data);
-  // mp4Container.off('data');
-  // mp4Container.on('data', (segment:any) =>{
-  //   storageStream.write(new Uint8Array(segment.data));
-  // })
-  // })
+  ipcMain.on('start-recording', startRecording);
+  ipcMain.on('stop-recording', stopRecording);
+  ipcMain.on('write-buffer', writeBuffer);
+  ipcMain.on('on-finished-encoding', onFinishedEncoding);
 }
 
-function convertToMP4(inputFile, outputFile) {
+function startRecording(event: IpcMainEvent) {
+  tempVideoPath = join(tmpdir(), Date.now() + '.ts');
+  console.log('temp video path:', tempVideoPath);
+  storageStream = createWriteStream(tempVideoPath);
+  storageStream.on('finish', () => {
+    convertToMP4(tempVideoPath.toString(), app.getPath('videos') + '/moti-' + Date.now() + '.mp4');
+  })
+  recorderWindow?.webContents.send('start-recording');
+}
+
+function stopRecording(event: IpcMainEvent) {
+  recorderWindow?.webContents.send('stop-recording');
+}
+
+function onFinishedEncoding(event: IpcMainEvent) {
+  storageStream.end();
+}
+
+function onLocalVideoFrame(event: IpcMainEvent, frame: VideoFrame) {
+  recorderWindow?.webContents.send('on-local-video-frame', frame);
+}
+
+function onMixedAudioFrame(event: IpcMainEvent, frame: AudioFrame) {
+  recorderWindow?.webContents.send('on-mixed-audio-frame', frame);
+}
+
+function writeBuffer(event: IpcMainEvent, buffer: ArrayBuffer) {
+  storageStream.write(Buffer.from(buffer));
+}
+
+function convertToMP4(inputFile: string, outputFile: string) {
   ffmpeg()
     .input(inputFile)
     .videoCodec('libx264')
@@ -142,26 +152,12 @@ function convertToMP4(inputFile, outputFile) {
     .on('end', () => {
       console.log('Conversion to MP4 completed.', outputFile);
     })
-    .on('error', (err) => {
+    .on('error', err => {
       console.error('Error converting to MP4:', err);
     })
     .run();
 }
 
-function onMixedAudioFrame(event: IpcMainEvent, frame: AudioFrame) {
-  compositorWindow?.webContents.send('on-mixed-audio-frame', frame);
-}
-function writeBuffer(event: IpcMainEvent, buffer: ArrayBuffer) {
-  // mp4Container.push(new Uint8Array(buffer));
-  // mp4Container.flush();
-  storageStream.write(Buffer.from(buffer));
-  // Get the converted MP4 Blob
-
-}
-
-function compositeLocalFrame(event: IpcMainEvent, frame: VideoFrame) {
-  compositorWindow?.webContents.send('composite-local-frame', frame);
-}
 /**
  * Restore an existing BrowserWindow or Create a new BrowserWindow.
  */
@@ -170,7 +166,7 @@ export async function restoreOrCreateWindow() {
 
   if (window === undefined) {
     window = await createWindow();
-    //await initCompositorWindow();
+    initRecorderWindow();
   }
 
   if (window.isMinimized()) {
@@ -179,5 +175,3 @@ export async function restoreOrCreateWindow() {
 
   window.focus();
 }
-
-

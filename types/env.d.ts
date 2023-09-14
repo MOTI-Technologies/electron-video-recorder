@@ -18,6 +18,9 @@ interface ImportMetaEnv {
 
   /** Current app version */
   readonly VITE_APP_VERSION: string;
+  /** Current app version */
+
+  readonly DEV: boolean;
 }
 
 interface ImportMeta {
