@@ -2,7 +2,7 @@ import agoraTokenPackage from 'agora-access-token';
 const { RtcTokenBuilder, RtcRole } = agoraTokenPackage;
 import { randomBytes } from 'crypto';
 
-import { VITE_AGORA_APP_ID, VITE_AGORA_PRIMARY_CERT, VITE_TOKEN_EXPIRATION_SECONDS } from '$env/static/private';
+import { VITE_AGORA_APP_ID, AGORA_PRIMARY_CERT, TOKEN_EXPIRATION_SECONDS } from '$env/static/private';
 export interface AgoraTokenResult {
 	token: string;
 	channel: string;
@@ -11,9 +11,9 @@ export interface AgoraTokenResult {
 }
 
 const expirationTimeInSeconds =
-	!Number(VITE_TOKEN_EXPIRATION_SECONDS) || isNaN(Number(VITE_TOKEN_EXPIRATION_SECONDS))
+	!Number(TOKEN_EXPIRATION_SECONDS) || isNaN(Number(TOKEN_EXPIRATION_SECONDS))
 		? 3600
-		: Number(VITE_TOKEN_EXPIRATION_SECONDS);
+		: Number(TOKEN_EXPIRATION_SECONDS);
 
 export function generateAgoraToken(channel: string, useEncryption = false): AgoraTokenResult {
 	const encryptionKey = randomBytes(32).toString('hex');
@@ -24,7 +24,7 @@ export function generateAgoraToken(channel: string, useEncryption = false): Agor
 	const currentTimestamp = Math.floor(now / 1000);
 	const expires = currentTimestamp + expirationTimeInSeconds;
 	const appID = VITE_AGORA_APP_ID;
-	const appCertificate = VITE_AGORA_PRIMARY_CERT;
+	const appCertificate = AGORA_PRIMARY_CERT;
 
 	const token = RtcTokenBuilder.buildTokenWithUid(
 		appID,
