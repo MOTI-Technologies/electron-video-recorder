@@ -154,8 +154,8 @@ precision mediump float;
       return;
     }
 
-    let width = frame.width ?? 640;
-    let height = frame.height ?? 480;
+    const width = frame.width ?? 640;
+    const height = frame.height ?? 480;
 
     this.gl.viewport(0, 0, 1280, 720);
 

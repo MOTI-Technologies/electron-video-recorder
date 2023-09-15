@@ -1,7 +1,7 @@
 // See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
 
-import type {AudioFrame, VideoFrame} from 'agora-electron-sdk';
+import type { AudioFrame, VideoFrame } from 'agora-electron-sdk';
 
 declare global {
   declare namespace App {
@@ -14,22 +14,8 @@ declare global {
 
 
   interface ImportMetaEnv {
-    readonly VITE_FIREBASE_APIKEY: string;
-    readonly VITE_FIREBASE_AUTHDOMAIN: string;
-    readonly VITE_FIREBASE_DATABASEURL: string;
-    readonly VITE_FIREBASE_PROJECTID: string;
-    readonly VITE_FIREBASE_STORAGEBUCKET: string;
-    readonly VITE_FIREBASE_MESSAGINGSENDERID: string;
-    readonly VITE_FIREBASE_APPID: string;
-    readonly VITE_FIREBASE_MEASUREMENTID: string;
     readonly VITE_AGORA_APP_ID: string;
-    readonly VITE_AGORA_PRIMARY_CERT: string;
-    readonly VITE_REDI_PASSWORD: string;
-    readonly VITE_REDIS_HOST: string;
-    readonly VITE_REDIS_PORT: string;
-    readonly VITE_TOKEN_EXPIRATION_SECONDS: string;
-    readonly VITE_API_URL: string;
-    readonly VITE_SOCKETS_API_URL: string;
+    readonly DEV: boolean;
   }
 
   interface ImportMeta {

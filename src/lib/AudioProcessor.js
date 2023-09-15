@@ -1,7 +1,5 @@
-// @ts-nocheck
-
-import { AudioBufferPool } from "./AudioBufferPool";
-import { Queue } from "./Queue";
+import {AudioBufferPool} from './AudioBufferPool';
+import {Queue} from './Queue';
 
 class AudioProcessor extends AudioWorkletProcessor {
   SAMPLES_IN = 512;
@@ -15,14 +13,14 @@ class AudioProcessor extends AudioWorkletProcessor {
   constructor() {
     super();
     this.port.onmessage = this.onMessage.bind(this);
-    this.bufferPool = new AudioBufferPool(this.SAMPLES_OUT, this.SAMPLES_IN / this.SAMPLES_OUT * 2);
+    this.bufferPool = new AudioBufferPool(this.SAMPLES_OUT, (this.SAMPLES_IN / this.SAMPLES_OUT) * 2);
     this.outputBufferQueue = new Queue();
   }
 
   onMessage(event) {
     const inputBuffer = Uint8Array.from(event.data);
     var outputBuffer = this.bufferPool.getNextBuffer();
-    if(!outputBuffer) {
+    if (!outputBuffer) {
       console.log('input overflow');
       return;
     }
@@ -30,15 +28,14 @@ class AudioProcessor extends AudioWorkletProcessor {
     for (let i = 0; i < inputBuffer.length; i += 2) {
       let int = inputBuffer[i] | (inputBuffer[i + 1] << 8);
       let sample = int >= 0x8000 ? -(0x10000 - int) / 0x8000 : int / 0x7fff;
-      let bufferIndex = (i/2) % this.SAMPLES_OUT;
+      let bufferIndex = (i / 2) % this.SAMPLES_OUT;
       if (i != 0 && bufferIndex === 0) {
         this.outputBufferQueue.enqueue(outputBuffer);
         outputBuffer = this.bufferPool.getNextBuffer();
-        if(!outputBuffer) {
+        if (!outputBuffer) {
           console.log('input overflow');
           return;
         }
-        
       }
       outputBuffer[bufferIndex] = sample;
     }

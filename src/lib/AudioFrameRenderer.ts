@@ -1,7 +1,7 @@
-import type {AudioFrame} from 'agora-electron-sdk';
+import type { AudioFrame } from 'agora-electron-sdk';
 
 export class AudioFrameRenderer {
-  private audioContext = new AudioContext({sampleRate: 16000});
+  private audioContext = new AudioContext({ sampleRate: 16000 });
   private audioDestination = this.audioContext.createMediaStreamDestination();
   private audioWorkletNode!: AudioWorkletNode;
 
@@ -25,7 +25,7 @@ export class AudioFrameRenderer {
   }
 
   public renderFrame = (audioFrame: AudioFrame) => {
-    let buffer = audioFrame.buffer;
+    const buffer = audioFrame.buffer;
     if (!buffer) return;
 
     this.audioWorkletNode.port.postMessage(buffer);

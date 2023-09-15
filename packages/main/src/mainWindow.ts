@@ -1,23 +1,20 @@
-import {app, BrowserWindow, IpcMain, ipcMain, IpcMainEvent} from 'electron';
-import {join} from 'node:path';
-import {URL} from 'node:url';
-import {AudioFrame, VideoFrame} from 'agora-electron-sdk';
-import * as fs from 'fs';
-import * as path from 'path';
-import * as os from 'os';
-import {write} from 'node:fs';
+import { app, BrowserWindow, IpcMain, ipcMain, IpcMainEvent } from 'electron';
+import { join, resolve } from 'node:path';
+import type { AudioFrame, VideoFrame } from 'agora-electron-sdk';
+import { createWriteStream } from 'node:fs';
 import ffmpeg from 'fluent-ffmpeg';
 import * as ffmpegstatic from 'ffmpeg-static-electron';
+import { tmpdir } from 'node:os';
+import type { PathLike, WriteStream } from 'node:fs';
 
 ffmpeg.setFfmpegPath(ffmpegstatic.path);
 
 let recorderWindow: BrowserWindow;
-let storageStream: fs.WriteStream;
-let tempVideoPath: fs.PathLike;
-const pageUrl =
-  import.meta.env.DEV && import.meta.env.VITE_DEV_SERVER_URL !== undefined
-    ? import.meta.env.VITE_DEV_SERVER_URL
-    : new URL('../renderer/dist/index.html', 'file://' + __dirname).toString();
+let storageStream: WriteStream;
+let tempVideoPath: PathLike;
+const pageUrl = import.meta.env.VITE_DEV_SERVER_URL;
+const isDev = import.meta.env.DEV && pageUrl !== undefined;
+console.log({ env: process.env })
 
 async function createWindow() {
   const appIcon = join(app.getAppPath(), 'static/images/moti-webapp-icon.png');
@@ -51,8 +48,8 @@ async function createWindow() {
   browserWindow.on('ready-to-show', () => {
     browserWindow?.show();
 
-    if (import.meta.env.DEV) {
-      browserWindow?.webContents.openDevTools({mode: 'detach'});
+    if (isDev) {
+      browserWindow?.webContents.openDevTools({ mode: 'detach' });
     }
   });
 
@@ -62,12 +59,19 @@ async function createWindow() {
    * `file://../renderer/index.html` for production and test.
    */
 
-  await browserWindow.loadURL(pageUrl);
+
+
+  if (isDev && pageUrl) {
+    await browserWindow.loadURL(pageUrl);
+  } else {
+    const file = join(app.getAppPath(), 'packages/renderer/dist/index.html')
+    await browserWindow.loadFile(file);
+  }
 
   return browserWindow;
 }
 
-function initRecorderWindow() {
+async function initRecorderWindow() {
   const width = 1280; // Frame width
   const height = 720; // Frame height
 
@@ -86,10 +90,16 @@ function initRecorderWindow() {
     },
   });
 
-  recorderWindow.loadURL(pageUrl + 'offscreen');
+  if (isDev && pageUrl) {
+    console.log('compositor window: ', pageUrl + 'offscreen');
+    await recorderWindow.loadURL(pageUrl + 'offscreen');
+  } else {
+    await recorderWindow.loadFile(resolve(__dirname, '../../renderer/dist/offscreen.html'));
+  }
 
   recorderWindow.once('ready-to-show', () => {
-    recorderWindow.webContents.openDevTools({mode: 'detach'});
+    recorderWindow.webContents.openDevTools({ mode: 'detach' });
+    console.log('ready to show compositor window')
   });
 
   ipcMain.on('on-local-video-frame', onLocalVideoFrame);
@@ -101,9 +111,9 @@ function initRecorderWindow() {
 }
 
 function startRecording(event: IpcMainEvent) {
-  tempVideoPath = path.join(os.tmpdir(), Date.now() + '.ts');
+  tempVideoPath = join(tmpdir(), Date.now() + '.ts');
   console.log('temp video path:', tempVideoPath);
-  storageStream = fs.createWriteStream(tempVideoPath);
+  storageStream = createWriteStream(tempVideoPath);
   storageStream.on('finish', () => {
     convertToMP4(tempVideoPath.toString(), app.getPath('videos') + '/moti-' + Date.now() + '.mp4');
   })

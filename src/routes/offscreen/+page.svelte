@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {onDestroy, onMount} from 'svelte';
+  import {onMount} from 'svelte';
   import {VideoFrameRenderer} from '../../lib/VideoFrameRenderer'
   import {AudioFrameRenderer} from '../../lib/AudioFrameRenderer'
 
@@ -40,10 +40,6 @@
     window.recorderAPI.onMixedAudioFrame(audioFrameRenderer.renderFrame);
   });
 
-  onDestroy(() => {
-    
-  });
-
   function startRecording() {
     mediaRecorder.start(1);
   }
@@ -59,13 +55,12 @@
   <title>Offscreen</title>
 </svelte:head>
 
-  <canvas
-    class="videoCanvas"
-    width=1280px
-    height=720px
-    bind:this={videoCanvas}
-  />
+<canvas
+  class="videoCanvas"
+  width="1280px"
+  height="720px"
+  bind:this={videoCanvas}
+/>
 
 <style>
-
 </style>
