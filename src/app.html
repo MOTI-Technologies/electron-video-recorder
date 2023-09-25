@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta
       http-equiv="Content-Security-Policy"
-      content="default-src 'self'; style-src 'unsafe-inline'; img-src 'self' https://*.motiapp.com data:; font-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com devtools:; connect-src 'self' *;"
+      content="default-src 'self'; style-src 'unsafe-inline' 'unsafe-eval' data: filesystem: *; img-src 'self' https://*.motiapp.com data: filesystem:; font-src 'self' data: filesystem:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com filesystem: devtools:; connect-src 'self' * data: filesystem:; object-src 'self' data: blob:; media-src 'self' https://*.motiapp.com data: blob:;"
     />
     <link
       rel="icon"

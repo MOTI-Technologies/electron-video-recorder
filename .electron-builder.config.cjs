@@ -18,10 +18,14 @@ module.exports = async function () {
     },
     files: ['packages/**/dist/**'],
     extraResources: [
+      'node_modules/agora-electron-sdk/js/**',
+      'node_modules/agora-electron-sdk/build/**',
+      'node_modules/agora-electron-sdk/package.json',
       'node_modules/ffmpeg-static-electron/bin/${os}/${arch}/ffmpeg',
       'node_modules/ffmpeg-static-electron/index.js',
       'node_modules/ffmpeg-static-electron/package.json',
     ],
+    npmRebuild: true,
     extraMetadata: {
       version: getVersion(),
     },

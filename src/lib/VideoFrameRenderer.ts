@@ -177,12 +177,12 @@ export class VideoFrameRenderer {
       return;
     }
 
-    let textureWidth = frame.width;
-    let textureHeight = frame.height;
+    const textureWidth = frame.width;
+    const textureHeight = frame.height;
     this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
     this.gl.activeTexture(this.gl.TEXTURE0);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.yTex!);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.yTex);
     this.gl.texImage2D(
       this.gl.TEXTURE_2D,
       0,
@@ -196,7 +196,7 @@ export class VideoFrameRenderer {
     );
 
     this.gl.activeTexture(this.gl.TEXTURE1);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.uTex!);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.uTex);
     this.gl.texImage2D(
       this.gl.TEXTURE_2D,
       0,
@@ -210,7 +210,7 @@ export class VideoFrameRenderer {
     );
 
     this.gl.activeTexture(this.gl.TEXTURE2);
-    this.gl.bindTexture(this.gl.TEXTURE_2D, this.vTex!);
+    this.gl.bindTexture(this.gl.TEXTURE_2D, this.vTex);
     this.gl.texImage2D(
       this.gl.TEXTURE_2D,
       0,

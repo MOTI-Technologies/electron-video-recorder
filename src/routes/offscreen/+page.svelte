@@ -61,8 +61,6 @@
     window.recorderAPI.onMixedAudioFrame(onMixedAudioFrame);
   });
 
-  onDestroy(() => {});
-
   function startRecording() {
     console.log('starting media recorder');
     isRecording = true;
