@@ -101,12 +101,9 @@ function initRecorderWindow() {
 }
 
 function startRecording(event: IpcMainEvent) {
-  tempVideoPath = path.join(os.tmpdir(), Date.now() + '.ts');
+  tempVideoPath = path.join(os.tmpdir(), Date.now() + '.webm');
   console.log('temp video path:', tempVideoPath);
   storageStream = fs.createWriteStream(tempVideoPath);
-  storageStream.on('finish', () => {
-    convertToMP4(tempVideoPath.toString(), app.getPath('videos') + '/moti-' + Date.now() + '.mp4');
-  })
   recorderWindow?.webContents.send('start-recording');
 }
 
@@ -115,11 +112,17 @@ function stopRecording(event: IpcMainEvent) {
 }
 
 function onFinishedEncoding(event: IpcMainEvent) {
-  storageStream.end();
+  storageStream.end(() => {
+    console.log('storage stream ended - closing');
+    storageStream.close(() => {
+      console.log('storage stream closed - converting');
+      convertToMP4(tempVideoPath.toString(), app.getPath('videos') + '/moti-' + Date.now() + '.mp4');
+    })
+  });
 }
 
-function onLocalVideoFrame(event: IpcMainEvent, frame: VideoFrame) {
-  recorderWindow?.webContents.send('on-local-video-frame', frame);
+function onLocalVideoFrame(event: IpcMainEvent, frame: VideoFrame, uid: number) {
+  recorderWindow?.webContents.send('on-local-video-frame', frame, uid);
 }
 
 function onMixedAudioFrame(event: IpcMainEvent, frame: AudioFrame) {
@@ -134,10 +137,15 @@ function convertToMP4(inputFile: string, outputFile: string) {
   ffmpeg()
     .input(inputFile)
     .videoCodec('libx264')
+    .inputOptions([
+      '-vsync vfr', // Specify variable frame rate (VFR)
+    ])
     // .audioCodec('aac')
-    .format('mp4')
+    // .format('mp4')
     .output(outputFile)
-    .videoBitrate(900)
+    .outputFormat('mp4')
+    // .outputFPS(30)
+    // .videoBitrate(900)
     // .audioBitrate(96)
     .on('end', () => {
       console.log('Conversion to MP4 completed.', outputFile);

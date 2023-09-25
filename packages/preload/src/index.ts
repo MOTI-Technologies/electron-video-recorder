@@ -28,8 +28,8 @@ contextBridge.exposeInMainWorld('agoraAPI', {
 contextBridge.exposeInMainWorld('recorderAPI', {
   onStart: (callback: () => void) => ipcRenderer.on('start-recording', () => callback()),
   onStop: (callback: () => void) => ipcRenderer.on('stop-recording', () => callback()),
-  onLocalVideoFrame: (callback: (frame: VideoFrame) => void) =>
-    ipcRenderer.on('on-local-video-frame', (event: IpcRendererEvent, frame: VideoFrame) => callback(frame)),
+  onLocalVideoFrame: (callback: (frame: VideoFrame, uid: number) => void) =>
+    ipcRenderer.on('on-local-video-frame', (event: IpcRendererEvent, frame: VideoFrame, uid: number) => callback(frame, uid)),
   onRemoteVideoFrame: (callback: (frame: VideoFrame) => void) =>
     ipcRenderer.on('on-remote-video-frame', (event: IpcRendererEvent, frame: VideoFrame) => callback(frame)),
   onMixedAudioFrame: (callback: (frame: AudioFrame) => void) =>

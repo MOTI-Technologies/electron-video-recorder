@@ -46,7 +46,7 @@ declare global {
     recorderAPI: {
       onStart: (callback: () => void) => void;
       onStop: (callback: () => void) => void;
-      onLocalVideoFrame: (callback: (frame: VideoFrame) => void) => void;
+      onLocalVideoFrame: (callback: (frame: VideoFrame, uid: number) => void) => void;
       onRemoteVideoFrame: (callback: (frame: VideoFrame) => void) => void;
       onMixedAudioFrame: (callback: (frame: AudioFrame) => void) => void;
       writeBuffer: (buffer: ArrayBuffer) => void;

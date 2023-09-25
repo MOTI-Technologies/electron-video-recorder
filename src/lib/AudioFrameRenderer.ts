@@ -27,7 +27,7 @@ export class AudioFrameRenderer {
   public renderFrame = (audioFrame: AudioFrame) => {
     let buffer = audioFrame.buffer;
     if (!buffer) return;
-
+    
     this.audioWorkletNode.port.postMessage(buffer);
   };
 }

@@ -8,7 +8,9 @@
   $: joinTitle = joined ? 'Leave' : 'Join';
   $: recordTitle = (recording ? 'Stop' : 'Start') + ' Recording';
 
-  onMount(() => {});
+  onMount(() => {
+    console.log(data.token.token);
+  });
 
   function videoComplete(e: {detail: string}) {
     console.log('video complete', e.detail);

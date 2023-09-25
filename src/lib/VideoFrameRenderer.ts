@@ -1,4 +1,19 @@
 import type {VideoFrame} from 'agora-electron-sdk';
+import {mat4} from 'gl-matrix'
+
+export class Rect {
+  x: number;
+  y: number;
+  height: number;
+  width: number;
+
+  constructor(x: number, y: number, width: number, height: number) {
+    this.x = x;
+    this.y = y;
+    this.width = width;
+    this.height = height;
+  }
+}
 
 export class VideoFrameRenderer {
   gl: WebGLRenderingContext;
@@ -9,34 +24,40 @@ export class VideoFrameRenderer {
   fShader: WebGLShader | undefined;
   glProgram: WebGLProgram | undefined;
 
+  uProjectionMatrix!: WebGLUniformLocation | null;
+
   private vertexShaderSource = `
     attribute vec2 a_position;
+    uniform mat4 uProjectionMatrix;
     varying vec2 v_texCoord;
+
     void main() {
-      gl_Position = vec4(a_position, 0.0, 1.0);
+      gl_Position = uProjectionMatrix * vec4(a_position, 0.0, 1.0);
       v_texCoord = a_position * 0.5 + 0.5;
     }
     `;
 
   private fragmentShaderSource = `
-precision mediump float;
-  varying vec2 v_texCoord;
-  uniform sampler2D yTexture;
-  uniform sampler2D uTexture;
-  uniform sampler2D vTexture;
-  const mat4 YUV2RGB = mat4(
-      1.0, 1.0, 1.0, 0.0,
-0.0, -0.344136, 1.772, 0.0,
-1.402, -0.714136, 0.0, 0.0,
-0.0, 0.0, 0.0, 1.0
-  );
-  void main() {
-    vec3 yuv;
-    yuv.x = texture2D(yTexture, v_texCoord).r;
-    yuv.y = texture2D(uTexture, v_texCoord).r - 0.5;
-    yuv.z = texture2D(vTexture, v_texCoord).r - 0.5;
-    gl_FragColor = vec4(YUV2RGB * vec4(yuv, 1.0)).rgba;
-  }
+    precision mediump float;
+    varying vec2 v_texCoord;
+    uniform sampler2D yTexture;
+    uniform sampler2D uTexture;
+    uniform sampler2D vTexture;
+
+    const mat4 YUV2RGB = mat4(
+        1.0, 1.0, 1.0, 0.0,
+        0.0, -0.344136, 1.772, 0.0,
+        1.402, -0.714136, 0.0, 0.0,
+        0.0, 0.0, 0.0, 1.0
+    );
+
+    void main() {
+      vec3 yuv;
+      yuv.x = texture2D(yTexture, v_texCoord).r;
+      yuv.y = texture2D(uTexture, v_texCoord).r - 0.5;
+      yuv.z = texture2D(vTexture, v_texCoord).r - 0.5;
+      gl_FragColor = vec4(YUV2RGB * vec4(yuv, 1.0)).rgba;
+    }
     `;
 
   constructor(gl: WebGLRenderingContext) {
@@ -50,6 +71,7 @@ precision mediump float;
     this.initShaders();
     this.initProgram();
     this.initVertexBuffer();
+    this.clear();
   }
 
   private initTextures() {
@@ -124,6 +146,7 @@ precision mediump float;
     const yTextureLocation = this.gl.getUniformLocation(this.glProgram, 'yTexture');
     const uTextureLocation = this.gl.getUniformLocation(this.glProgram, 'uTexture');
     const vTextureLocation = this.gl.getUniformLocation(this.glProgram, 'vTexture');
+    this.uProjectionMatrix = this.gl.getUniformLocation(this.glProgram, 'uProjectionMatrix');
     this.gl.uniform1i(yTextureLocation, 0);
     this.gl.uniform1i(uTextureLocation, 1);
     this.gl.uniform1i(vTextureLocation, 2);
@@ -148,16 +171,15 @@ precision mediump float;
     this.gl.vertexAttribPointer(positionAttributeLocation, 2, this.gl.FLOAT, false, 0, 0);
   }
 
-  public renderFrame = (frame: VideoFrame) => {
-    if (!this.yTex || !this.uTex || !this.vTex) {
+  public renderFrame = (frame: VideoFrame, viewport: Rect) => {
+    if (!this.yTex || !this.uTex || !this.vTex || !frame.width || !frame.height) {
       console.log('render error: undefined textures');
       return;
     }
 
-    let width = frame.width ?? 640;
-    let height = frame.height ?? 480;
-
-    this.gl.viewport(0, 0, 1280, 720);
+    let textureWidth = frame.width;
+    let textureHeight = frame.height;
+    this.gl.viewport(viewport.x, viewport.y, viewport.width, viewport.height);
 
     this.gl.activeTexture(this.gl.TEXTURE0);
     this.gl.bindTexture(this.gl.TEXTURE_2D, this.yTex!);
@@ -165,8 +187,8 @@ precision mediump float;
       this.gl.TEXTURE_2D,
       0,
       this.gl.LUMINANCE,
-      width,
-      height,
+      textureWidth,
+      textureHeight,
       0,
       this.gl.LUMINANCE,
       this.gl.UNSIGNED_BYTE,
@@ -179,8 +201,8 @@ precision mediump float;
       this.gl.TEXTURE_2D,
       0,
       this.gl.LUMINANCE,
-      width / 2,
-      height / 2,
+      textureWidth / 2,
+      textureHeight / 2,
       0,
       this.gl.LUMINANCE,
       this.gl.UNSIGNED_BYTE,
@@ -193,18 +215,37 @@ precision mediump float;
       this.gl.TEXTURE_2D,
       0,
       this.gl.LUMINANCE,
-      width / 2,
-      height / 2,
+      textureWidth / 2,
+      textureHeight / 2,
       0,
       this.gl.LUMINANCE,
       this.gl.UNSIGNED_BYTE,
       frame.vBuffer ?? new Uint8Array(),
     );
 
+    const textureAspectRatio = textureWidth / textureHeight;
+    const canvasAspectRatio = viewport.width / viewport.height;
+
+    let scaleWidth = 1;
+    let scaleHeight = 1;
+
+    if (textureAspectRatio > canvasAspectRatio) {
+      // texture is wider than the canvas
+      scaleWidth = canvasAspectRatio / textureAspectRatio;
+    } else {
+      // texture is taller than the canvas
+      scaleHeight = textureAspectRatio / canvasAspectRatio;
+    }
+
+    const projectionMatrix = mat4.create();
+    mat4.ortho(projectionMatrix, -scaleWidth, scaleWidth, -scaleHeight, scaleHeight, -1, 1);
+
+    this.gl.uniformMatrix4fv(this.uProjectionMatrix, false, projectionMatrix);
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
   };
 
   public clear = () => {
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT)
-  }
+    this.gl.clearColor(0, 0, 0, 1)
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+  };
 }

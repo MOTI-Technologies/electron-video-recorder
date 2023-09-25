@@ -12,6 +12,7 @@ import {
   IAudioFrameObserver,
   IRtcEngineEx,
   IRtcEngineEventHandler,
+  RtcConnection,
 } from 'agora-electron-sdk';
 import {ipcRenderer} from 'electron';
 
@@ -20,28 +21,28 @@ export class CallManager {
   public isRecording = false;
 
   eventHandler: IRtcEngineEventHandler = {
-    onJoinChannelSuccess: (connection: any, elapsed: number) => {
+    onJoinChannelSuccess: (connection: RtcConnection, elapsed: number) => {
       console.log('success!!!');
     },
-    // // Listen for the onUserJoined to setup the remote view.
-    // onUserJoined: (connection: string, remoteUid, elapsed) =>
-    // {
-    //     // Save the remote UID for reuse.
-    //     remoteUID = remoteUid;
-    //     // Assign the remote UID to the local video container.
-    //     remoteVideoContainer.textContent = "Remote user " + remoteUID.toString();
-    //     // Setup remote video to display the remote video.
-    //     agoraEngine.setupRemoteVideoEx(
-    //     {
-    //         sourceType: VideoSourceType.VideoSourceRemote,
-    //         uid: remoteUid,
-    //         view:remoteVideoContainer,
-    //         renderMode: RenderModeType.RenderModeFit,
-    //     },
-    //     {
-    //         channelId: connection.channelId
-    //     });
-    // },
+    // Listen for the onUserJoined to setup the remote view.
+    onUserJoined: (connection: RtcConnection, remoteUid, elapsed) =>
+    {
+        // Save the remote UID for reuse.
+        // remoteUID = remoteUid;
+        let remoteVideoContainer = document.getElementById('theirVideo');
+
+        // Setup remote video to display the remote video.
+        this.agoraEngine?.setupRemoteVideoEx(
+        {
+            sourceType: VideoSourceType.VideoSourceRemote,
+            uid: remoteUid,
+            view:remoteVideoContainer,
+            renderMode: RenderModeType.RenderModeFit,
+        },
+        {
+            channelId: connection.channelId
+        });
+    },
   };
 
   audioObserver: IAudioFrameObserver = {
@@ -59,7 +60,7 @@ export class CallManager {
 
   videoObserver: IVideoFrameObserver = {
     onCaptureVideoFrame: (sourceType: VideoSourceType, videoFrame: VideoFrame) => {
-      if (this.isRecording) ipcRenderer.send('on-local-video-frame', videoFrame);
+      if (this.isRecording) ipcRenderer.send('on-local-video-frame', videoFrame, 0);
       return true;
     },
     onPreEncodeVideoFrame: (sourceType: VideoSourceType, videoFrame: VideoFrame) => {
@@ -69,6 +70,7 @@ export class CallManager {
       return false;
     },
     onRenderVideoFrame: (channelId: string, remoteUid: number, videoFrame: VideoFrame) => {
+      if(this.isRecording) ipcRenderer.send('on-local-video-frame', videoFrame, remoteUid);
       return false;
     },
   };
@@ -92,13 +94,12 @@ export class CallManager {
     this.agoraEngine?.getMediaEngine().registerAudioFrameObserver(this.audioObserver);
     var SAMPLE_RATE = 16000,
       SAMPLE_NUM_OF_CHANNEL = 1,
-      SAMPLES_PER_CALL = 512;
+      SAMPLES_PER_CALL = 1024;
     this.agoraEngine?.setMixedAudioFrameParameters(SAMPLE_RATE, SAMPLE_NUM_OF_CHANNEL, SAMPLES_PER_CALL);
     this.agoraEngine?.setChannelProfile(ChannelProfileType.ChannelProfileCommunication);
     this.agoraEngine?.setClientRole(ClientRoleType.ClientRoleBroadcaster);
 
     if (localVideoContainer) {
-      console.log('found localVideoContainer: ', localVideoContainer);
       this.agoraEngine.setupLocalVideo({
         sourceType: VideoSourceType.VideoSourceCameraPrimary,
         view: localVideoContainer,

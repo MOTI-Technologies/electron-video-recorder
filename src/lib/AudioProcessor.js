@@ -4,7 +4,7 @@ import { AudioBufferPool } from "./AudioBufferPool";
 import { Queue } from "./Queue";
 
 class AudioProcessor extends AudioWorkletProcessor {
-  SAMPLES_IN = 512;
+  SAMPLES_IN = 1024;
   SAMPLES_OUT = 128;
 
   numProcessedSamples = 0;
@@ -61,7 +61,7 @@ class AudioProcessor extends AudioWorkletProcessor {
     this.bufferPool.returnBuffer(outputBuffer);
     this.numProcessedSamples += this.SAMPLES_OUT;
     if (!this.startTime) this.startTime = Date.now();
-    // console.log('output sample rate: ' + this.numProcessedSamples / (Date.now() - this.startTime) + '/s');
+    // console.log('output sample rate: ' + this.numProcessedSamples / (Date.now() - this.startTime) * 1000 + '/s');
 
     return true;
   }
