@@ -1,18 +1,24 @@
 <script lang="ts">
   import {onMount} from 'svelte';
   import Video from '$lib/components/Video.svelte';
-  import type { AgoraTokenResult } from '../lib/types';
+  import type {AgoraTokenResult} from '../lib/types';
+  import {CallManager} from '../lib/CallManager';
+  import {VideoCallRecorder} from '../lib/VideoCallRecorder';
 
   const uid = '111';
 
   let data: AgoraTokenResult;
-  let fetchError = ''
+  let fetchError = '';
   let joined = false;
   let recording = false;
+  let callManager = new CallManager();
+  let videoCallRecorder = new VideoCallRecorder(callManager);
   $: btnTitle = (joined ? 'Leave' : 'Join') + ' Channel';
   $: recordTitle = (recording ? 'Stop' : 'Start') + ' Recording';
+  $: fps = videoCallRecorder.fps;
 
   onMount(() => {
+    callManager.setOnAddAudioTrack(videoCallRecorder.addAudioTrack);
     getToken();
   });
 
@@ -36,6 +42,18 @@
       fetchError = 'No token returned';
     }
   }
+
+  function joinChannel(token: string, channel: string) {
+    console.log('joining');
+    callManager.joinChannel(channel, token);
+    joined = true;
+  }
+
+  function leaveChannel() {
+    console.log('leaving');
+    callManager.leaveChannel();
+    joined = false;
+  }
 </script>
 
 <svelte:head>
@@ -54,41 +72,38 @@
       id="theirVideo"
       on:complete={videoComplete}
     />
-  </div>
 
-  <div class="user">
-    <p>channel: {channel}</p>
-    <p>token: {token}</p>
-    <button
-      on:click={(e) => {
-    if (!joined) {
-      console.log('joining');
-      window.agoraAPI.joinChannel(channel, token);
-      joined = true;
-    } else {
-      console.log('leaving');
-      window.agoraAPI.leaveChannel();
-      joined = false;
-    }
-    
-  }}
-      class:joined
-    >
-      {btnTitle}
-    </button>
-    <button
-      on:click={e => {
-	if (!recording) {
-	  window.agoraAPI.startRecording();
-	  recording = true;
-	} else {
-	  window.agoraAPI.stopRecording();
-	  recording = false;
-	}
-  }}
-    >
-      {recordTitle}
-    </button>
+    <div class="user">
+
+      <button
+        on:click={e => {
+          if (!joined) {
+            joinChannel(token, channel);
+          } else {
+            leaveChannel();
+          }
+        }}
+        class:joined
+      >
+        {btnTitle}
+      </button>
+      <button
+        on:click={e => {
+          if (!recording) {
+            videoCallRecorder.start();
+            recording = true;
+          } else {
+            videoCallRecorder.stop();
+            recording = false;
+          }
+        }}
+      >
+        {recordTitle}
+      </button>
+      {#if joined}
+        <p>FPS: {$fps.toFixed(2)}</p>
+      {/if}
+    </div>
   </div>
 {:else if fetchError}
   <div class="page">
@@ -115,14 +130,13 @@
   }
   .wrap {
     display: flex;
-    height: 50%;
-    width: 100%;
+    /* height: 50%;
+    width: 100%; */
   }
   .wrap :global(.video) {
-    width: 50%;
-    height: 100%;
-    flex: 1;
-    margin: 1em;
+    width: 400px;
+    height: 400px;
+    margin: 0.5em;
     border-style: solid;
     border-radius: 5px;
   }
@@ -132,19 +146,11 @@
   .wrap :global(#theirVideo) {
     border-color: blue;
   }
+
   .user {
-    margin: 2em 1em;
+    margin: 1em 1em;
   }
 
-  .wrap :global(#myVideo) {
-    border-color: red;
-  }
-  .wrap :global(#theirVideo) {
-    border-color: blue;
-  }
-  .user {
-    margin: 2em 1em;
-  }
   button {
     background: black;
     color: white;
@@ -153,10 +159,10 @@
     cursor: pointer;
     font-size: 1rem;
     font-weight: 600;
-    padding: 0.75em 1em;    
+    padding: 0.75em 1em;
+    margin: 1em;
     align-items: center;
     justify-content: center;
     display: flex;
   }
-
 </style>

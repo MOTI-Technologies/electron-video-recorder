@@ -62,6 +62,10 @@ app.on('web-contents-created', (_, contents) => {
    * @see https://www.electronjs.org/docs/latest/tutorial/security#5-handle-session-permission-requests-from-remote-content
    */
   contents.session.setPermissionRequestHandler((webContents, permission, callback) => {
+    if (permission === 'media') {
+      // Approves the permissions request
+      return callback(true)
+    }
     const {origin} = new URL(webContents.getURL());
 
     const permissionGranted = !!ALLOWED_ORIGINS_AND_PERMISSIONS.get(origin)?.has(permission);

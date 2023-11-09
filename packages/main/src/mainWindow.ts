@@ -1,6 +1,5 @@
 import { app, BrowserWindow, IpcMain, ipcMain, IpcMainEvent } from 'electron';
 import { join, resolve } from 'node:path';
-import type { AudioFrame, VideoFrame } from 'agora-electron-sdk';
 import { createWriteStream } from 'node:fs';
 import ffmpeg from 'fluent-ffmpeg';
 import * as ffmpegstatic from 'ffmpeg-static-electron';
@@ -14,7 +13,13 @@ let storageStream: WriteStream;
 let tempVideoPath: PathLike;
 const pageUrl = import.meta.env.VITE_DEV_SERVER_URL;
 const isDev = import.meta.env.DEV && pageUrl !== undefined;
-console.log({ env: process.env })
+
+const windowWidth = 1280;
+const windowHeight = 720;
+
+ipcMain.on('init-storage-stream', initStorageStream);
+ipcMain.on('write-buffer', writeBuffer);
+ipcMain.on('on-finished-encoding', onFinishedEncoding);
 
 async function createWindow() {
   const appIcon = join(app.getAppPath(), 'static/images/moti-webapp-icon.png');
@@ -22,10 +27,10 @@ async function createWindow() {
   const browserWindow = new BrowserWindow({
     show: false, // Use the 'ready-to-show' event to show the instantiated BrowserWindow.
     backgroundColor: '#181A22',
-    minHeight: 668,
-    minWidth: 960,
-    height: 668,
-    width: 960,
+    minHeight: windowHeight,
+    minWidth: windowWidth,
+    height: windowHeight,
+    width: windowWidth,
     center: true,
     icon: appIcon,
     webPreferences: {
@@ -71,54 +76,50 @@ async function createWindow() {
   return browserWindow;
 }
 
-async function initRecorderWindow() {
-  const width = 1280; // Frame width
-  const height = 720; // Frame height
+// async function initRecorderWindow() {
+//   const width = 1280; // Frame  width
+//   const height = 720; // Frame height
 
-  recorderWindow = new BrowserWindow({
-    show: true,
-    backgroundColor: '#181A22',
-    height,
-    width,
-    center: true,
-    webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      sandbox: false,
-      webviewTag: false,
-      preload: join(app.getAppPath(), 'packages/preload/dist/index.cjs'),
-    },
-  });
+//   recorderWindow = new BrowserWindow({
+//     show: true,
+//     backgroundColor: '#181A22',
+//     height,
+//     width,
+//     center: true,
+//     webPreferences: {
+//       nodeIntegration: false,
+//       contextIsolation: true,
+//       sandbox: false,
+//       webviewTag: false,
+//       preload: join(app.getAppPath(), 'packages/preload/dist/index.cjs'),
+//     },
+//   });
 
-  if (isDev && pageUrl) {
-    console.log('compositor window: ', pageUrl + 'offscreen');
-    await recorderWindow.loadURL(pageUrl + 'offscreen');
-  } else {
-    await recorderWindow.loadFile(resolve(__dirname, '../../renderer/dist/offscreen.html'));
-  }
+//   if (isDev && pageUrl) {
+//     console.log('compositor window: ', pageUrl + 'offscreen');
+//     await recorderWindow.loadURL(pageUrl + 'offscreen');
+//   } else {
+//     await recorderWindow.loadFile(resolve(__dirname, '../../renderer/dist/offscreen.html'));
+//   }
 
-  recorderWindow.once('ready-to-show', () => {
-    recorderWindow.webContents.openDevTools({ mode: 'detach' });
-    console.log('ready to show compositor window')
-  });
+//   recorderWindow.once('ready-to-show', () => {
+//     recorderWindow.webContents.openDevTools({ mode: 'detach' });
+//     console.log('ready to show compositor window')
+//   });
 
-  ipcMain.on('on-local-video-frame', onLocalVideoFrame);
-  ipcMain.on('on-mixed-audio-frame', onMixedAudioFrame);
-  ipcMain.on('start-recording', startRecording);
-  ipcMain.on('stop-recording', stopRecording);
-  ipcMain.on('write-buffer', writeBuffer);
-  ipcMain.on('on-finished-encoding', onFinishedEncoding);
-}
+//   ipcMain.on('on-local-video-frame', onLocalVideoFrame);
+//   ipcMain.on('on-mixed-audio-frame', onMixedAudioFrame);
+//   ipcMain.on('start-recording', startRecording);
+//   ipcMain.on('stop-recording', stopRecording);
+//   ipcMain.on('write-buffer', writeBuffer);
+//   ipcMain.on('on-finished-encoding', onFinishedEncoding);
+// }
 
-function startRecording(event: IpcMainEvent) {
+function initStorageStream(event: IpcMainEvent) {
   tempVideoPath = join(tmpdir(), Date.now() + '.webm');
   console.log('temp video path:', tempVideoPath);
   storageStream = createWriteStream(tempVideoPath);
-  recorderWindow?.webContents.send('start-recording');
-}
-
-function stopRecording(event: IpcMainEvent) {
-  recorderWindow?.webContents.send('stop-recording');
+  // recorderWindow?.webContents.send('start-recording');
 }
 
 function onFinishedEncoding(event: IpcMainEvent) {
@@ -129,14 +130,6 @@ function onFinishedEncoding(event: IpcMainEvent) {
       convertToMP4(tempVideoPath.toString(), app.getPath('videos') + '/moti-' + Date.now() + '.mp4');
     })
   });
-}
-
-function onLocalVideoFrame(event: IpcMainEvent, frame: VideoFrame, uid: number) {
-  recorderWindow?.webContents.send('on-local-video-frame', frame, uid);
-}
-
-function onMixedAudioFrame(event: IpcMainEvent, frame: AudioFrame) {
-  recorderWindow?.webContents.send('on-mixed-audio-frame', frame);
 }
 
 function writeBuffer(event: IpcMainEvent, buffer: ArrayBuffer) {
@@ -174,7 +167,7 @@ export async function restoreOrCreateWindow() {
 
   if (window === undefined) {
     window = await createWindow();
-    initRecorderWindow();
+    // initRecorderWindow();
   }
 
   if (window.isMinimized()) {

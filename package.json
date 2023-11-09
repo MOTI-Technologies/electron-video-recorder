@@ -68,12 +68,9 @@
     "vitest": "0.34.4"
   },
   "dependencies": {
-    "agora-electron-sdk": "^4.2.2",
+    "agora-rtc-sdk-ng": "^4.19.1",
     "electron-updater": "6.1.4",
     "fluent-ffmpeg": "^2.1.2",
     "gl-matrix": "^3.4.3"
-  },
-  "agora_electron": {
-    "prebuilt": true
   }
 }

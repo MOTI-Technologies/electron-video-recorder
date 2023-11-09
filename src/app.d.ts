@@ -1,8 +1,6 @@
 // See https://kit.svelte.dev/docs/types#app
 // for information about these interfaces
 
-import type { AudioFrame, VideoFrame } from 'agora-electron-sdk';
-
 declare global {
   declare namespace App {
 
@@ -23,20 +21,14 @@ declare global {
   }
 
   interface Window {
-    agoraAPI: {
-      joinChannel: (channel: string, token: string) => void;
-      leaveChannel: () => void;
-      startRecording: () => void;
-      stopRecording: () => void;
-    };
     recorderAPI: {
       onStart: (callback: () => void) => void;
       onStop: (callback: () => void) => void;
-      onLocalVideoFrame: (callback: (frame: VideoFrame, uid: number) => void) => void;
-      onRemoteVideoFrame: (callback: (frame: VideoFrame) => void) => void;
-      onMixedAudioFrame: (callback: (frame: AudioFrame) => void) => void;
       writeBuffer: (buffer: ArrayBuffer) => void;
+      initStorageStream: () => void;
       onFinishedEncoding: () => void;
     };
   }
 }
+
+export {};

@@ -10,6 +10,6 @@
     "types": ["node"],
     "baseUrl": "."
   },
-  "include": ["src/**/*.ts", "../../types/**/*.d.ts", "src/CallManager.ts"],
+  "include": ["src/**/*.ts", "../../types/**/*.d.ts"],
   "exclude": ["**/*.spec.ts", "**/*.test.ts"]
 }
